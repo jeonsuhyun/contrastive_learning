@@ -1,0 +1,32 @@
+# general
+seed: 42
+workers: 8
+
+# train options
+batch_size: 1024 # 256
+start_epoch: 0
+epochs: 10000
+dataset: "tocabi_orientation_fixed"
+
+# model options
+resnet: "Linear" #ResNet1D / ResNet18 / ResNet34 / ResNet50
+input_dim: 16
+feature_dim: 64
+cluster_dim: 8
+instance_dim: 8
+model_path: "contrastiveik/save/tocabi_orientation_fixed"
+reload: False
+
+# loss options
+learning_rate: 0.0001
+weight_decay: 0.
+instance_temperature: 0.6 # 0.5
+cluster_temperature: 1.0
+
+# dataset: panda_orientation
+exp_name: "tocabi_orientation"
+dataset_name: "fixed_50000"
+# x_dim: 14
+# z_dim: 5
+c_dim: 3
+# h_dim: 512

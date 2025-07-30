@@ -1,0 +1,7 @@
+anytree
+matplotlib
+numpy
+pyquaternion
+pytorch_lightning
+scipy
+torch

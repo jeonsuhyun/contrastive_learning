@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/suhyun/catkin_ws/devel/include/**",
+        "/home/suhyun/jsh_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/suhyun/catkin_ws/src/gl_depth_sim/gl_depth_sim/include/**",
+        "/home/suhyun/catkin_ws/src/optoforce/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

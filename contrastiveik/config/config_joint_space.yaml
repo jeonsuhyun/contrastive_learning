@@ -1,0 +1,44 @@
+# general
+seed: 42
+workers: 8
+
+# train options
+batch_size: 256
+start_epoch: 0
+epochs: 1000
+dataset: "panda_orientation" # CIFAR-10 / CIFAR-100 / STL-10 / ImageNet-10 / ImageNet-dogs / tiny-ImageNet
+
+# model options
+resnet: "Linear" #ResNet1D / ResNet18 / ResNet34 / ResNet50
+input_dim: 7
+feature_dim: 128
+cluster_dim: 6
+instance_dim: 5
+model_path: "save/panda_orientation_geodesic_loss"
+reload: False
+
+# loss options
+learning_rate: 0.0002
+weight_decay: 0.
+instance_temperature: 0.6 # 0.5
+cluster_temperature: 1.0
+
+# dataset: panda_orientation
+exp_name: "panda_orientation"
+dataset_name: "50000"
+x_dim: 7
+z_dim: 5
+c_dim: 2
+h_dim: 512
+
+# clustering options
+clustering_method: "contrastive_dbscan" # kmeans / dbscan / contrastive_kmeans / contrastive_dbscan / hnne
+data_len: 2000
+
+# dbscan clustering options
+max_size: 10
+min_samples: 5
+epsilon: 1.3 # 1.1 1.2 1.3 for dbscan 
+epsilon_con: 0.8 # 0.9 1.0 1.1 for contrastive dbscan
+# kmeans clustering options
+num_clusters: 5

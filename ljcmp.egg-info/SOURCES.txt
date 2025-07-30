@@ -1,0 +1,7 @@
+README.md
+setup.py
+ljcmp.egg-info/PKG-INFO
+ljcmp.egg-info/SOURCES.txt
+ljcmp.egg-info/dependency_links.txt
+ljcmp.egg-info/requires.txt
+ljcmp.egg-info/top_level.txt
