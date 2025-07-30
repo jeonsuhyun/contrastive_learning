@@ -116,16 +116,30 @@ class TwoArmJacobianController():
             # Follower arm control: maintain relative pose w.r.t. leader
             if self.follower_relative_pose is not None:
                 x_leader_new = self.fk_func_leader(q_leader_new)
-                x_follower = self.fk_func_follower(q_follower)
                 desired_x_follower = x_leader_new + self.follower_relative_pose
-                error_follower = desired_x_follower - x_follower
-                J_follower = self.jacobian_func_follower(q_follower)
-                JT_follower = J_follower.T
-                JJ_follower = J_follower @ JT_follower
-                lambda_I_follower = self.damping * np.eye(JJ_follower.shape[0])
-                J_pinv_follower = JT_follower @ np.linalg.inv(JJ_follower + lambda_I_follower)
-                dq_follower = self.step_size * (J_pinv_follower @ error_follower)
-                q_follower_new = q_follower + dq_follower
+
+                # Compute candidate follower joint solutions via IK
+                # Assumes self.ik_func_follower returns a list of solutions (np.ndarray)
+                ik_solutions = self.ik_func_follower(desired_x_follower, q_follower)
+                if ik_solutions is None or len(ik_solutions) == 0:
+                    # No valid IK solution found, keep previous
+                    q_follower_new = np.copy(q_follower)
+                else:
+                    # Compute the "suggested" next q_follower by Jacobian step (for proximity)
+                    x_follower = self.fk_func_follower(q_follower)
+                    error_follower = desired_x_follower - x_follower
+                    J_follower = self.jacobian_func_follower(q_follower)
+                    JT_follower = J_follower.T
+                    JJ_follower = J_follower @ JT_follower
+                    lambda_I_follower = self.damping * np.eye(JJ_follower.shape[0])
+                    J_pinv_follower = JT_follower @ np.linalg.inv(JJ_follower + lambda_I_follower)
+                    dq_follower = self.step_size * (J_pinv_follower @ error_follower)
+                    q_follower_jacobian = q_follower + dq_follower
+
+                    # Select the IK solution closest to the Jacobian-predicted q_follower_jacobian
+                    dists = [np.linalg.norm(q_sol - q_follower_jacobian) for q_sol in ik_solutions]
+                    min_idx = np.argmin(dists)
+                    q_follower_new = np.copy(ik_solutions[min_idx])
             else:
                 q_follower_new = np.copy(q_follower)
 

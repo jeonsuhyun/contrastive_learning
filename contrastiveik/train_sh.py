@@ -79,7 +79,7 @@ def parse_args():
     # config 내용을 parser에 추가
     for k, v in config.items():
         parser.add_argument(f"--{k}", default=v, type=type(v))
-
+        
     args = parser.parse_args()
     return args
 
