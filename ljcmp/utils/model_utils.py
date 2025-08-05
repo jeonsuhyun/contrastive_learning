@@ -753,7 +753,7 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 start_q = min_start_q
                 goal_q = min_goal_q
                 
-            elif args.metric == "min_z":
+            elif args.metric == "min_z" or args.metric == "min_embedding":
                 if "transformer" in model_path:
                     model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
                                instance_dim=instance_dim, cluster_dim=cluster_dim)
@@ -764,38 +764,14 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 model.load_state_dict(torch.load(model_path, map_location=device.type)['net'])
                 model.to(device)
                 model.eval()
-
-                with torch.no_grad():
-                    z_start_ik = model.feature_inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
-                    z_goal_ik = model.feature_inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
-
-                minimum_z = np.inf
-                for i in range(len(z_start_ik)):
-                    for j in range(len(z_goal_ik)):
-                        z_dist = np.linalg.norm(z_start_ik[i] - z_goal_ik[j])
-                        if z_dist < minimum_z:
-                            min_start_q = start_ik_group[i]
-                            min_goal_q = goal_ik_group[j]
-                            minimum_z = z_dist
-                
-                start_q = min_start_q
-                goal_q = min_goal_q
-            
-            elif args.metric == "min_embedding":
-                if "transformer" in model_path:
-                    model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
-                               instance_dim=instance_dim, cluster_dim=cluster_dim)
+                if args.metric == "min_z":
+                    with torch.no_grad():
+                        z_start_ik = model.feature_inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+                        z_goal_ik = model.feature_inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
                 else:
-                    model = network.SimNetwork(input_dim=input_dim, feature_dim=feature_dim, 
-                               instance_dim=instance_dim, cluster_dim=cluster_dim)
-                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                model.load_state_dict(torch.load(model_path, map_location=device.type)['net'])
-                model.to(device)
-                model.eval()
-
-                with torch.no_grad():
-                    z_start_ik = model.inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
-                    z_goal_ik = model.inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+                    with torch.no_grad():
+                        z_start_ik = model.inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+                        z_goal_ik = model.inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
 
                 minimum_z = np.inf
                 for i in range(len(z_start_ik)):
@@ -809,7 +785,7 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 start_q = min_start_q
                 goal_q = min_goal_q
 
-            elif args.metric == "min_q_embedding":
+            elif args.metric == "min_q_z" or args.metric == "min_q_embedding":
                 if "transformer" in model_path:
                     model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
                                instance_dim=instance_dim, cluster_dim=cluster_dim)
@@ -820,10 +796,14 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 model.load_state_dict(torch.load(model_path, map_location=device.type)['net'])
                 model.to(device)
                 model.eval()
-
-                with torch.no_grad():
-                    z_start_ik = model.inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
-                    z_goal_ik = model.inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+                if args.metric == "min_q_z":
+                    with torch.no_grad():
+                            z_start_ik = model.feature_inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+                            z_goal_ik = model.feature_inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+                else:
+                    with torch.no_grad():
+                        z_start_ik = model.inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+                        z_goal_ik = model.inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
                 
                 min_total_dist = np.inf
                 for i in range(len(start_ik_group)):
@@ -840,37 +820,6 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 start_q = min_start_q
                 goal_q = min_goal_q
 
-            elif args.metric == "min_q_z":
-                if "transformer" in model_path:
-                    model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
-                               instance_dim=instance_dim, cluster_dim=cluster_dim)
-                else:
-                    model = network.SimNetwork(input_dim=input_dim, feature_dim=feature_dim, 
-                               instance_dim=instance_dim, cluster_dim=cluster_dim)
-                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                model.load_state_dict(torch.load(model_path, map_location=device.type)['net'])
-                model.to(device)
-                model.eval()
-
-                with torch.no_grad():
-                    z_start_ik = model.feature_inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
-                    z_goal_ik = model.feature_inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
-                
-                min_total_dist = np.inf
-                for i in range(len(start_ik_group)):
-                    for j in range(len(goal_ik_group)):
-                        q_dist = np.linalg.norm(start_ik_group[i] - goal_ik_group[j])
-                        z_dist = np.linalg.norm(z_start_ik[i] - z_goal_ik[j])
-                        total_dist = q_dist + z_dist  # 또는 alpha * q_dist + beta * z_dist
-
-                        if total_dist < min_total_dist:
-                            min_start_q = start_ik_group[i]
-                            min_goal_q = goal_ik_group[j]
-                            min_total_dist = total_dist
-
-                start_q = min_start_q
-                goal_q = min_goal_q
-            
             elif args.metric == "random":
                 start_q = start_ik_group[np.random.randint(0, len(start_ik_group))]
                 goal_q = goal_ik_group[np.random.randint(0, len(goal_ik_group))]
@@ -1106,7 +1055,7 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
 
             if r is True:
                 if display:
-                    hz = 20
+                    hz = 40
                     duration, qs_sample, qds_sample, qdds_sample, ts_sample = time_parameterize(q_path, model_info, hz=hz)
                     
                     if debug:
@@ -1114,7 +1063,7 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
 
                     for q in qs_sample:
                         constraint.planning_scene.display(q)
-                        time.sleep(1.0/hz)
+                        time.sleep(2.0/hz)
                 
     test_paths_cartesian = []
     for path in test_paths:

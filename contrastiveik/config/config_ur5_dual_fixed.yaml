@@ -14,7 +14,7 @@ input_dim: 12
 feature_dim: 64
 cluster_dim: 6
 instance_dim: 6
-model_path: "contrastiveik/save/ur5_dual_fixed"
+model_path: "contrastiveik/save/ur5_dual_fixed_hdbscan_umap"
 reload: False
 
 # loss options

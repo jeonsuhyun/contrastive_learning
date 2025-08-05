@@ -65,7 +65,7 @@ def save_checkpoint(model, optimizer, epoch, args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_yaml", type=str, default="ur5_dual_fixed_transformer", required=True,
+    parser.add_argument("--config_yaml", type=str, default="ur5_dual_fixed", required=True,
                         help="Name of the experiment. Used to load the corresponding config YAML file.")
 
     # 먼저 experiment 이름만 받아서 config 경로 설정
@@ -126,12 +126,13 @@ if __name__ == "__main__":
         print("Loading UR5 dataset...")
         cond_joint = np.load(f'./dataset/{args.exp_name}/manifold/data_fixed_50000.npy')
         nulls     = np.load(f'./dataset/{args.exp_name}/manifold/null_fixed_50000.npy')
-        label     = np.load(f'./dataset/{args.exp_name}/manifold/data_fixed_50000_dbscan_joint_labels.npy')
-
+        label     = np.load(f'./dataset/{args.exp_name}/manifold/umap_hdbscan_concat_all.npy')
+        print(label.shape)
         # import pdb; pdb.set_trace()
 
         cond      = cond_joint[:, :args.c_dim].astype(np.float32)
         joint     = cond_joint[:, args.c_dim:].astype(np.float32)
+        print(joint.shape)
         nulls     = nulls.astype(np.float32)
         label     = label.astype(np.float32)
         dataset   = data.TensorDataset(

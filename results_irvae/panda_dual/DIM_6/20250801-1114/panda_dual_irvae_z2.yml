@@ -1,0 +1,77 @@
+data:
+  training:
+    batch_size: 100
+    dataset: panda_dual
+    digits:
+    - 0
+    - 1
+    n_workers: 4
+    root: dataset
+    shuffle: true
+    split: training
+  validation:
+    batch_size: 100
+    dataset: panda_dual
+    digits:
+    - 0
+    - 1
+    n_workers: 4
+    root: dataset
+    shuffle: true
+    split: validation
+device: cuda:0
+logdir: results_irvae/panda_dual/DIM_6/
+logger:
+  endwith:
+  - '@'
+  type: base
+model:
+  arch: irvae
+  decoder:
+    activation:
+    - relu
+    - relu
+    - relu
+    - relu
+    arch: fc_vec
+    img_size:
+    - 1
+    - 28
+    - 28
+    l_hidden:
+    - 256
+    - 256
+    - 256
+    - 256
+    out_activation: sigmoid
+    out_chan_num: 1
+  encoder:
+    activation:
+    - relu
+    - relu
+    - relu
+    - relu
+    arch: fc_vec
+    img_size:
+    - 1
+    - 28
+    - 28
+    l_hidden:
+    - 256
+    - 256
+    - 256
+    - 256
+    out_activation: linear
+    out_chan_num: 1
+  iso_reg: 100
+  x_dim: 14
+  z_dim: 8
+trainer: base
+training:
+  n_epoch: 300
+  optimizer:
+    lr: 0.0001
+    name: adam
+  print_interval: 100
+  val_interval: 100
+  visualize_interval: 100

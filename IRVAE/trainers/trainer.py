@@ -23,7 +23,7 @@ class BaseTrainer:
         best_val_loss = np.inf
     
         for i_epoch in range(1, cfg['n_epoch'] + 1):
-            for x, _ in train_loader:
+            for x, label in train_loader:
                 i_iter += 1
 
                 model.train()
@@ -41,7 +41,7 @@ class BaseTrainer:
 
                 model.eval()
                 if i_iter % cfg.val_interval == 0:
-                    for x, _ in val_loader:
+                    for x, label in val_loader:
                         d_val = model.validation_step(x.to(self.device))
                         logger.process_iter_val(d_val)
                     d_val = logger.summary_val(i_iter)
@@ -62,9 +62,9 @@ class BaseTrainer:
                             print_str = print_str + f'\t{key[:-1]}: {val:.4f}'
                     print(print_str)
 
-                if i_iter % cfg.visualize_interval == 0:
-                    d_val = model.visualization_step(train_loader, device=self.device)
-                    logger.add_val(i_iter, d_val)
+                # if i_iter % cfg.visualize_interval == 0:
+                #     d_val = model.visualization_step(train_loader, device=self.device)
+                #     logger.add_val(i_iter, d_val)
 
         self.save_model(model, logdir, i_iter="last")
         return model, best_val_loss

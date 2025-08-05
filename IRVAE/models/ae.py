@@ -115,7 +115,7 @@ class VAE(AE):
         ## original iamge and recon image plot
         num_figures = 100
         num_each_axis = 10
-        x = dl.dataset.data[torch.randperm(len(dl.dataset.data))[:num_figures]]
+        x = dl.dataset.tensors[0][torch.randperm(len(dl.dataset.tensors[0]))[:num_figures]]
         recon = self.decode(self.encode(x.to(device)))
         x_img = make_grid(x.detach().cpu(), nrow=num_each_axis, value_range=(0, 1), pad_value=1)
         recon_img = make_grid(recon.detach().cpu(), nrow=num_each_axis, value_range=(0, 1), pad_value=1)
@@ -123,14 +123,14 @@ class VAE(AE):
         # 2d graph (latent sapce)
         num_points_for_each_class = 200
         num_G_plots_for_each_class = 20
-        label_unique = torch.unique(dl.dataset.targets)
+        label_unique = torch.unique(dl.dataset.tensors[1])
         z_ = []
         z_sampled_ = []
         label_ = []
         label_sampled_ = []
         G_ = []
         for label in label_unique:
-            temp_data = dl.dataset.data[dl.dataset.targets == label][:num_points_for_each_class]
+            temp_data = dl.dataset.tensors[0][dl.dataset.tensors[1] == label][:num_points_for_each_class]
             temp_z = self.encode(temp_data.to(device))
             z_sampled = temp_z[torch.randperm(len(temp_z))[:num_G_plots_for_each_class]]
             G = get_pullbacked_Riemannian_metric(self.decode, z_sampled)
