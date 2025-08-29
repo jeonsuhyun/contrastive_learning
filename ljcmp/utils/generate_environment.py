@@ -393,8 +393,8 @@ def generate_environment_tocabi(exp_name):
 
     q_init = set_constraint(c)
 
-    add_table(pc, 'table_1', [0.5,-0.6,0.3], 0, 0, 0.5, 0.9, 0.6, 0.05)
-    add_table(pc, 'table_2', [0.5,0.6,0.3], 0, 0, 0.5, 0.9, 0.6, 0.05)
+    add_table(pc, 'table_1', [0.6,-0.6,-0.5], 0, 0, 0.5, 0.9, 1.0, 0.05)
+    add_table(pc, 'table_2', [0.6,0.6,-0.5], 0, 0, 0.5, 0.9, 1.0, 0.05)
 
     num_obs = 3
 

@@ -15,3 +15,5 @@ model
 contrastiveik/save
 
 save
+
+*.pkl

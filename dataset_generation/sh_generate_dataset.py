@@ -162,7 +162,7 @@ if __name__ == '__main__':
     else:
         condition = None
 
-    generate_constrained_config(constraint_setup_fn=set_constraint(args.exp_name), 
+    generate_constrained_config(constraint_setup_fn=set_constraint, 
                                 exp_name=args.exp_name, 
                                 workers_seed_range=range(args.seed, args.seed+args.num_workers), 
                                 dataset_size=args.dataset_size, samples_per_condition=args.samples_per_condition,

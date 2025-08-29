@@ -91,16 +91,14 @@ def create_valid_scene(scene_id, base_dir, random_seed, constraint, constraint_m
     np.random.seed(random_seed)
     scene = {'c': [0.3, 0.05, 0.9]}
     # dim: dphi, dtheta, length, width, height, d)
-    # table_top_dim = [length, width, d] 
-    # table_leg_dim = [d, d, height] 
-    table1 = {'pos': [0.5, -0.6, 0.3], 'dim': [0.0, 0.0, 0.5, 0.9, 0.6, 0.05]}
-    table2 = {'pos': [0.5,  0.6, 0.3], 'dim': [0.0, 0.0, 0.5, 0.9, 0.6, 0.05]}
+    # table_top_dim = [length, width, d] x, y d
+    # table_leg_dim = [d, d, height] d, d, z
+    table1 = {'pos': [0.5, -0.6, 0.3], 'dim': [0.0, 0.0, 0.5, 0.8, 0.6, 0.05]}
+    table2 = {'pos': [0.5,  0.6, 0.3], 'dim': [0.0, 0.0, 0.5, 0.8, 0.6, 0.05]}
     scene['table_1'] = {'pos': table1['pos'], 'dim': table1['dim']}
     scene['table_2'] = {'pos': table2['pos'], 'dim': table2['dim']}
 
-    obs_boxes = []
     obs = {'pos': [0.5, 0.0, 0.35], 'dim': [0.5, 0.05, 0.7]}
-    obs_boxes.append(obs)
     scene['obs0'] = {'pos': [0.5, 0.0, 0.35], 'dim': [0.5, 0.05, 0.7]}
 
     constraint.planning_scene.add_box('obs0', obs['dim'], obs['pos'], [1,0,0,0])

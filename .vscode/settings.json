@@ -11,5 +11,6 @@
         "/home/suhyun/jsh_ws/devel/lib/python3/dist-packages",
         "/home/suhyun/jsh_ws/src/suhan_robot_model_tools"
     ],
-    "ros.distro": "noetic"
+    "ros.distro": "noetic",
+    "ROS2.distro": "noetic"
 }

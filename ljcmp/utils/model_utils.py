@@ -112,7 +112,8 @@ def generate_constrained_config(constraint_setup_fn, exp_name,
     def generate_constrained_config_worker(seed, pos):
         np.random.seed(seed)
         save_dir_local = os.path.join(save_dir, str(seed))
-        os.makedirs(save_dir_local, exist_ok=True)
+        if not os.path.exists(save_dir_local):
+            os.makedirs(save_dir_local)
 
         tq = tqdm.tqdm(total=dataset_size_per_worker, position=pos,desc='Generating dataset for seed {}'.format(seed))
         q_dataset = []
@@ -199,6 +200,8 @@ def generate_constrained_config(constraint_setup_fn, exp_name,
         np.save(f'{save_dir_local}/null_{seed}_{dataset_size_per_worker}.npy', np.array(null_dataset[:dataset_size_per_worker]))
         tq.close()
 
+
+
     # generate_constrained_config_worker(1107,0)
     p_list = []
     for pos, seed in enumerate(workers_seed_range):
@@ -226,8 +229,6 @@ def generate_constrained_config(constraint_setup_fn, exp_name,
     else:
         np.save(f'{save_dir}/data_{dataset_size}.npy', data)
         np.save(f'{save_dir}/null_{dataset_size}.npy', null)
-
-
 
     print('Done')
 
@@ -678,7 +679,8 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 else:
                     # model_path = os.path.join('contrastiveik','save',"ur5_dual_fixed", "checkpoint_1700.tar")
                     # model_path = os.path.join('contrastiveik','save',"ur5_dual_fixed_0725", "checkpoint_10000.tar")
-                    model_path = os.path.join('contrastiveik','save',"ur5_dual_fixed_transformer", "checkpoint_10000.tar")
+                    # model_path = os.path.join('contrastiveik','save',"ur5_dual_fixed_transformer", "checkpoint_10000.tar")
+                    model_path = os.path.join('contrastiveik','save',"ur5_dual_fixed_hdbscan_umap", "checkpoint_10000.tar")
                     input_dim=12
                     feature_dim=64 
                     instance_dim=6
@@ -754,13 +756,17 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 goal_q = min_goal_q
                 
             elif args.metric == "min_z" or args.metric == "min_embedding":
-                if "transformer" in model_path:
-                    model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
+                # if "transformer" in model_path:
+                #     model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
+                #                instance_dim=instance_dim, cluster_dim=cluster_dim)
+                # else:
+                #     model = network.SimNetwork(input_dim=input_dim, feature_dim=feature_dim, 
+                #                instance_dim=instance_dim, cluster_dim=cluster_dim)
+                model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
                                instance_dim=instance_dim, cluster_dim=cluster_dim)
-                else:
-                    model = network.SimNetwork(input_dim=input_dim, feature_dim=feature_dim, 
-                               instance_dim=instance_dim, cluster_dim=cluster_dim)
+
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                # print(model)
                 model.load_state_dict(torch.load(model_path, map_location=device.type)['net'])
                 model.to(device)
                 model.eval()
@@ -786,11 +792,14 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 goal_q = min_goal_q
 
             elif args.metric == "min_q_z" or args.metric == "min_q_embedding":
-                if "transformer" in model_path:
-                    model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
-                               instance_dim=instance_dim, cluster_dim=cluster_dim)
-                else:
-                    model = network.SimNetwork(input_dim=input_dim, feature_dim=feature_dim, 
+                # if "transformer" in model_path:
+                #     model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
+                #                instance_dim=instance_dim, cluster_dim=cluster_dim)
+                # else:
+                #     model = network.SimNetwork(input_dim=input_dim, feature_dim=feature_dim, 
+                #                instance_dim=instance_dim, cluster_dim=cluster_dim)
+                
+                model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
                                instance_dim=instance_dim, cluster_dim=cluster_dim)
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 model.load_state_dict(torch.load(model_path, map_location=device.type)['net'])
@@ -828,50 +837,48 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
             start_q = given_start_q
             goal_q = given_goal_q
         ####################
-        # # joint_dists = []
-        # # latent_dists = []
-        # # highlight_point = None
+        # joint_dists = []
+        # latent_dists = []
+        # highlight_point = None
 
-        # # for i in range(len(start_ik_group)):
-        # #     for j in range(len(goal_ik_group)):
-        # #         q_dist = np.linalg.norm(start_ik_group[i] - goal_ik_group[j])
-        # #         z_dist = np.linalg.norm(z_start_ik[i] - z_goal_ik[j])
+        # for i in range(len(start_ik_group)):
+        #     for j in range(len(goal_ik_group)):
+        #         q_dist = np.linalg.norm(start_ik_group[i] - goal_ik_group[j])
+        #         z_dist = np.linalg.norm(z_start_ik[i] - z_goal_ik[j])
                 
-        # #         joint_dists.append(q_dist)
-        # #         latent_dists.append(z_dist)
+        #         joint_dists.append(q_dist)
+        #         latent_dists.append(z_dist)
 
-        # #         # 현재 쌍이 start_q, goal_q이면 강조할 포인트로 저장
-        # #         if np.allclose(start_ik_group[i], start_q) and np.allclose(goal_ik_group[j], goal_q):
-        # #             highlight_point = (q_dist, z_dist)
+        #         # 현재 쌍이 start_q, goal_q이면 강조할 포인트로 저장
+        #         if np.allclose(start_ik_group[i], start_q) and np.allclose(goal_ik_group[j], goal_q):
+        #             highlight_point = (q_dist, z_dist)
 
-        # # Plot start IK group joint values: joint i vs joint j for all pairs (i, j)
-        # import matplotlib.pyplot as plt
 
         # # Plot joint space pairwise scatter and diagonal histograms for start_ik_group
-        # # start_ik_group = np.array(start_ik_group)
-        # # n_joints = start_ik_group.shape[1]
+        # start_ik_group = np.array(start_ik_group)
+        # n_joints = start_ik_group.shape[1]
 
-        # # fig, axes = plt.subplots(n_joints, n_joints, figsize=(2 * n_joints, 2 * n_joints))
-        # # fig.suptitle('Start IK Group: Joint Pairwise Scatter & Diagonal Histograms', fontsize=14)
+        # fig, axes = plt.subplots(n_joints, n_joints, figsize=(2 * n_joints, 2 * n_joints))
+        # fig.suptitle('Start IK Group: Joint Pairwise Scatter & Diagonal Histograms', fontsize=14)
 
-        # # for i in range(n_joints):
-        # #     for j in range(n_joints):
-        # #         ax = axes[i, j]
-        # #         if i == j:
-        # #             ax.hist(start_ik_group[:, i], bins=20, color='skyblue', alpha=0.7)
-        # #         else:
-        # #             ax.scatter(start_ik_group[:, j], start_ik_group[:, i], alpha=0.3, s=5)
-        # #         if i < n_joints - 1:
-        # #             ax.set_xticklabels([])
-        # #         else:
-        # #             ax.set_xlabel(f'Joint {j}', fontsize=8)
-        # #         if j > 0:
-        # #             ax.set_yticklabels([])
-        # #         else:
-        # #             ax.set_ylabel(f'Joint {i}', fontsize=8)
-        # #         ax.tick_params(axis='both', which='major', labelsize=6)
-        # # plt.tight_layout(rect=[0, 0, 1, 0.96])
-        # # plt.show()
+        # for i in range(n_joints):
+        #     for j in range(n_joints):
+        #         ax = axes[i, j]
+        #         if i == j:
+        #             ax.hist(start_ik_group[:, i], bins=20, color='skyblue', alpha=0.7)
+        #         else:
+        #             ax.scatter(start_ik_group[:, j], start_ik_group[:, i], alpha=0.3, s=5)
+        #         if i < n_joints - 1:
+        #             ax.set_xticklabels([])
+        #         else:
+        #             ax.set_xlabel(f'Joint {j}', fontsize=8)
+        #         if j > 0:
+        #             ax.set_yticklabels([])
+        #         else:
+        #             ax.set_ylabel(f'Joint {i}', fontsize=8)
+        #         ax.tick_params(axis='both', which='major', labelsize=6)
+        # plt.tight_layout(rect=[0, 0, 1, 0.96])
+        # plt.show()
 
         # # Plot latent space pairwise scatter and diagonal histograms for z_start_ik
         # print("c")
@@ -911,18 +918,6 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
         # plt.title('Joint vs Latent Distance between IK Pairs')
         # plt.grid(True)
         # plt.legend()
-        # plt.show()
-
-        # plt.figure(figsize=(8, 6))
-        # plt.scatter(range(len(z_start_ik)), z_start_ik[:, 0], label='z_start_ik dim 0')
-        # if z_start_ik.shape[1] > 1:
-        #     for dim in range(1, z_start_ik.shape[1]):
-        #         plt.scatter(range(len(z_start_ik)), z_start_ik[:, dim], label=f'z_start_ik dim {dim}')
-        # plt.xlabel('IK Sample Index')
-        # plt.ylabel('Latent Value')
-        # plt.title('Latent Space Values of z_start_ik')
-        # plt.legend()
-        # plt.grid(True)
         # plt.show()
 
         # continue

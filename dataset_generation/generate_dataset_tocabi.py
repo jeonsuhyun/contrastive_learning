@@ -23,6 +23,7 @@ parser.add_argument('--save_every', type=int, default=-1, help='save every n dat
 parser.add_argument('--save_top_k', type=int, default=1)
 parser.add_argument('--timeout', type=float, default=0.2)
 parser.add_argument('--display', type=bool, default=False)
+parser.add_argument('--condition', nargs=3, type=float, default=[0.3, 0.05, 0.9], help='Fixed condition as three float values: d1 d2 theta')
 
 args = parser.parse_args()
 
@@ -93,10 +94,15 @@ def set_constraint():
 
     return constraint, set_constraint_by_condition 
 
+if args.condition is not None:
+    c = np.array(args.condition, dtype=np.float32)
+else:
+    c = None
 
 generate_constrained_config(constraint_setup_fn=set_constraint, 
                             exp_name=args.exp_name, 
                             workers_seed_range=range(args.seed, args.seed+args.num_workers), 
                             dataset_size=args.dataset_size, samples_per_condition=args.samples_per_condition,
                             save_top_k=args.save_top_k, save_every=args.save_every, display=args.display,
+                            fixed_condition=c,
                             timeout=args.timeout)
