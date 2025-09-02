@@ -19,6 +19,7 @@ from ljcmp.planning.constrained_bi_rrt import SampleBiasedConstrainedBiRRT
 from ljcmp.planning.precomputed_roadmap import PrecomputedRoadmap, PrecomputedGraph
 from ljcmp.planning.constrained_bi_rrt_latent_jump import ConstrainedLatentBiRRT
 from ljcmp.planning.constrained_bi_rrt import ConstrainedBiRRT
+from ljcmp.planning.object_ik_constrained_bi_rrt import ObjectIKConstrainedBiRRT
 from ljcmp.utils.time_parameterization import time_parameterize
 
 from scipy.linalg import null_space
@@ -981,6 +982,35 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                                                constraint=constraint,
                                                start_region_fn=rs_start.sample,
                                                goal_region_fn=rs_goal.sample)
+
+                planner.max_distance = model_info['planning']['max_distance_q']
+                planner.debug = debug
+                r, q_path = planner.solve(max_time=max_time)
+
+            elif method == 'object_ik_constrained_rrt':
+                # Get IK results file from model info or use default
+                ik_results_file = model_info.get('ik_results_file', 'ik_results_tocabi_z_only_20250101_000000.pkl')
+                
+                if use_given_start_goal:
+                    planner = ObjectIKConstrainedBiRRT(
+                        ik_results_file=ik_results_file,
+                        state_dim=model_info['x_dim'], 
+                        constraint=constraint
+                    )
+                    planner.set_start(start_q)
+                    planner.set_goal(goal_q)
+                else:
+                    rs_start = RegionSampler(constraint)
+                    rs_start.set_target_pose(start_pose)
+                    rs_goal = RegionSampler(constraint)
+                    rs_goal.set_target_pose(goal_pose)
+                    planner = ObjectIKConstrainedBiRRT(
+                        ik_results_file=ik_results_file,
+                        state_dim=model_info['x_dim'],
+                        constraint=constraint,
+                        start_region_fn=rs_start.sample,
+                        goal_region_fn=rs_goal.sample
+                    )
 
                 planner.max_distance = model_info['planning']['max_distance_q']
                 planner.debug = debug

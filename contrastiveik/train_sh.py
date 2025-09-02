@@ -208,6 +208,7 @@ if __name__ == "__main__":
         args.cluster_temperature,
         device
     ).to(device)
+
     criterion_pose = contrastive_loss.SupervisedPoseLoss(
         loss_type="geodesic",
         device=device
@@ -228,6 +229,7 @@ if __name__ == "__main__":
         loss_type='hmc',
         batch_size=args.batch_size
     ).to(device)
+    
     # 4) Training loop with W&B logging
     for epoch in range(start_epoch, args.epochs + 1):
         avg_loss = train_epoch( model_transformer, data_loader, optimizer, device, epoch)

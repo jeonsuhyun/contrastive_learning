@@ -228,6 +228,7 @@ class ConstrainedBiRRT:
             
             # sample
             q_rand = self.random_sample()
+
             r = self.constraint.project(q_rand)
             if r is False:
                 continue
@@ -285,12 +286,19 @@ class ConstrainedBiRRT:
     def enforce_bounds(self, q):
         return np.clip(q, self.lb, self.ub)
     
-    def random_sample(self):
+    def random_sample_(self):
         q = np.random.uniform(self.lb, self.ub)
         r = self.constraint.project(q)
         if r is False:
             return self.random_sample()
         
+        return self.enforce_bounds(q)
+    
+    def random_sample(self):
+        q = np.random.uniform(self.lb, self.ub)
+        r = self.constraint.project(q)
+        if r is False:
+            return np.random.uniform(self.lb, self.ub)
         return self.enforce_bounds(q)
 
     def grow(self, tree, q):

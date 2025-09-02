@@ -11,7 +11,7 @@ from scipy.linalg import null_space
 from math import pi
 from scipy.spatial.transform import Rotation as R
 from srmt.kinematics.trac_ik import TRACIK
-from srmt.constraints.constraints import MultiChainConstraint
+from srmt.constraints.constraints import MultiChainConstraint, MultiChainFixedOrientationConstraint
 from ljcmp.utils.model_utils import get_transform, get_pose_from_transform
 from ljcmp.utils.generate_environment import generate_environment
 
