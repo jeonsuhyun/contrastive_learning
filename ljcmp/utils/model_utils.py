@@ -343,6 +343,53 @@ def compute_dual_grasp_poses(obj_pos, obj_quat, condition = None):
 
     return (r_pos, r_quat), (l_pos, l_quat)
 
+def compute_tocabi_grasp_poses(obj_pos, obj_quat, condition=None):
+    """Compute grasp poses for dual arms given object pose and condition"""
+    if condition is None:
+        condition = [0.3, 0.05, 0.9]
+    
+    d1, d2, theta = condition
+    
+    # left arm offset
+    l_obj_z = d2 * np.sin(theta)
+    l_obj_y = d1/2 + d2 * np.cos(theta)
+
+    # frame rotation
+    frame_rot = R.from_euler('z', np.pi).as_matrix()
+    obj_to_ee_pos_l = np.array([0.0, l_obj_y, l_obj_z])
+    obj_to_ee_pos_l =  obj_to_ee_pos_l
+    obj_dt_r = -(np.pi/2 - theta)
+    obj_to_ee_rot_l = np.array([
+        [1, 0, 0],
+        [0, np.cos(obj_dt_r), -np.sin(obj_dt_r)],
+        [0, np.sin(obj_dt_r),  np.cos(obj_dt_r)]
+    ])
+    obj_to_ee_rot_l =  obj_to_ee_rot_l @ frame_rot
+    obj_to_ee_quat_l = R.from_matrix(obj_to_ee_rot_l).as_quat()
+
+    # right arm offset
+    obj_to_ee_pos_r = np.array([0.0, -l_obj_y, l_obj_z])
+    obj_dt_l = (np.pi/2 - theta)
+    obj_to_ee_rot_r = np.array([
+        [1, 0, 0],
+        [0, np.cos(obj_dt_l), -np.sin(obj_dt_l)],
+        [0, np.sin(obj_dt_l),  np.cos(obj_dt_l)]
+    ])
+    obj_to_ee_rot_r = obj_to_ee_rot_r @ frame_rot
+    obj_to_ee_quat_r = R.from_matrix(obj_to_ee_rot_r).as_quat()
+
+    # Compute grasp poses
+    T_0o = get_transform(obj_pos, obj_quat)      # Object in world
+    T_og_l = get_transform(obj_to_ee_pos_l, obj_to_ee_quat_l)  # object to left ee
+    T_og_r = get_transform(obj_to_ee_pos_r, obj_to_ee_quat_r)  # object to right ee         
+    T_0g_r = T_0o @ T_og_r                            # right EE in world
+    T_0g_l = T_0o @ T_og_l                            # left EE in world
+    
+    r_pos, r_quat = get_pose_from_transform(T_0g_r)
+    l_pos, l_quat = get_pose_from_transform(T_0g_l)
+
+    return (r_pos, r_quat), (l_pos, l_quat)
+
 def plot_joint_pairwise_scatter(goal_ik_group):
     goal_ik_group = np.array(goal_ik_group)
     N, k = goal_ik_group.shape
@@ -396,16 +443,12 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
     # ready for model
 
     if "latent" in method:
-        constraint_model, validity_model = load_model(exp_name, model_info, 
-                                                    load_validity_model=load_validity_model)
-
+        constraint_model, validity_model = load_model(exp_name, model_info,load_validity_model=load_validity_model)
         constraint_model.to(device=device)
         validity_model.to(device=device)
-
         if condition is not None:
             constraint_model.set_condition(condition)
             validity_model.set_condition(condition)
-
         # warm up
         z_dim = model_info['z_dim']
         z = torch.normal(mean=torch.zeros([constraint_model.default_batch_size, z_dim]), 
@@ -416,14 +459,9 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
         constraint_model = None
         validity_model = None
 
-
     if 'precomputed_roadmap' in method:
         tag = model_info['precomputed_roadmap']['tag']
-
-        precomputed_roadmap_path = os.path.join('model', 
-                                                exp_name, 
-                                                model_info['precomputed_roadmap']['path'])
-        
+        precomputed_roadmap_path = os.path.join('model',exp_name,model_info['precomputed_roadmap']['path'])
         precomputed_roadmap = nx.read_gpickle(precomputed_roadmap_path)
 
         print(colored('precomputed_roadmap tag: ', 'green'), tag)
@@ -433,16 +471,10 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
 
     if 'precomputed_graph' in method:
         tag = model_info['precomputed_graph']['tag']
-
-        precomputed_graph_path = os.path.join('dataset',
-                                               exp_name,
-                                               model_info['precomputed_graph']['path'])
-        
+        precomputed_graph_path = os.path.join('dataset',exp_name,model_info['precomputed_graph']['path'])
         configs = np.load(precomputed_graph_path)
-        
         planner = PrecomputedGraph(state_dim=model_info['x_dim'], constraint=constraint)
         planner.from_configs(configs[:, model_info['c_dim']:])
-        
         precomputed_graph = planner.graph
 
     # benchmark
@@ -482,12 +514,10 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
 
         ###### debug #######
         if args.metric == 'given':
-            feature_map = False
+            start_q = given_start_q
+            goal_q = given_goal_q
         else:
-            feature_map = True
-
-        if feature_map:
-            # print("metric: ", args.metric)
+            print("metric: ", args.metric)
             
             if "panda_dual" in exp_name:
                 if "panda_dual_orientation" in exp_name:
@@ -739,9 +769,90 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 
                 # print("start_ik_group len: ", len(start_ik_group))
                 # print("goal_ik_group len: ", len(goal_ik_group))
+            
+            elif "tocabi" in exp_name:
+                if "orientation" in exp_name:
+                    model_path = os.path.join('contrastiveik','save',"tocabi_orientation_fixed", "checkpoint_10000.tar")
+                    input_dim=16
+                    feature_dim=64
+                    instance_dim=8
+                    cluster_dim=8
+                else:
+                    model_path = os.path.join('contrastiveik','save',"tocabi_fixed_hdbscan_umap", "checkpoint_10000.tar")
+                    input_dim=16
+                    feature_dim=64 
+                    instance_dim=6
+                    cluster_dim=10
+
+
+                trac_ik_left = TRACIK(base_link=model_info['base_link'], tip_link=model_info['ee_links'][0], max_time=0.1)
+                trac_ik_right = TRACIK(base_link=model_info['base_link'], tip_link=model_info['ee_links'][1], max_time=0.1)
+                start_pose_right, start_pose_left = compute_tocabi_grasp_poses(obj_start_pose[:3], obj_start_pose[3:7], condition)
+                goal_pose_right, goal_pose_left = compute_tocabi_grasp_poses(obj_goal_pose[:3], obj_goal_pose[3:7], condition)
+
+                start_ik_group = []
+                goal_ik_group = []
+                constraint.planning_scene.display(np.array([0, -0.3, 1.57, -1.2, -1.57, 1.5, 0.4, -0.2,
+                        0, 0.3, -1.57, 1.2, 1.57, -1.5, -0.4, 0.2]))
+
+                # IK start pose
+                start_ik_left = []
+                start_ik_right = []
+                for _ in range(100):
+                    joint_seed = np.random.uniform(constraint.lb[:model_info['arm_dofs'][0]], constraint.ub[:model_info['arm_dofs'][0]])
+                    success_left, ik_left = trac_ik_left.solve(np.array(start_pose_left[0]), np.array(start_pose_left[1]),joint_seed)
+                    if not success_left:
+                        continue
+                    if np.any(ik_left < constraint.lb[model_info['arm_dofs'][0]:]) or np.any(ik_left > constraint.ub[model_info['arm_dofs'][0]:]):
+                        continue
+                    start_ik_left.append(ik_left)
+
+                for _ in range(100):
+                    joint_seed = np.random.uniform(constraint.lb[:model_info['arm_dofs'][0]], constraint.ub[:model_info['arm_dofs'][0]])
+                    success_right, ik_right = trac_ik_right.solve(np.array(start_pose_right[0]), np.array(start_pose_right[1]), joint_seed)
+                    if not success_right:
+                        continue
+                    if np.any(ik_right < constraint.lb[:model_info['arm_dofs'][0]]) or np.any(ik_right > constraint.ub[:model_info['arm_dofs'][0]]):
+                        continue
+                    start_ik_right.append(ik_right)
+
+                for ik_left in start_ik_left:
+                    for ik_right in start_ik_right:
+                        start_full_ik = np.concatenate((ik_left, ik_right))
+                        if constraint.planning_scene.is_valid(start_full_ik):
+                            start_ik_group.append(start_full_ik)
+                            
+                # IK goal pose
+                goal_ik_left = []
+                goal_ik_right = []
+                for _ in range(100):
+                    joint_seed = np.random.uniform(constraint.lb[:model_info['arm_dofs'][0]], constraint.ub[:model_info['arm_dofs'][0]])
+                    success_left, ik_left = trac_ik_left.solve(np.array(goal_pose_left[0]), np.array(goal_pose_left[1]),joint_seed)
+                    if not success_left:
+                        continue
+                    if np.any(ik_left < constraint.lb[model_info['arm_dofs'][0]:]) or np.any(ik_left > constraint.ub[model_info['arm_dofs'][0]:]):
+                        continue
+                    goal_ik_left.append(ik_left)
+
+                for _ in range(100):
+                    joint_seed = np.random.uniform(constraint.lb[:model_info['arm_dofs'][0]], constraint.ub[:model_info['arm_dofs'][0]])
+                    success_right, ik_right = trac_ik_right.solve(np.array(goal_pose_right[0]), np.array(goal_pose_right[1]), joint_seed)
+                    if not success_right:
+                        continue
+                    if np.any(ik_right < constraint.lb[:model_info['arm_dofs'][0]]) or np.any(ik_right > constraint.ub[:model_info['arm_dofs'][0]]):
+                        continue
+                    goal_ik_right.append(ik_right)
+
+                for ik_left in goal_ik_left:
+                    for ik_right in goal_ik_right:
+                        goal_full_ik = np.concatenate((ik_left, ik_right))
+                        if constraint.planning_scene.is_valid(goal_full_ik):
+                            goal_ik_group.append(goal_full_ik)
+                        
             else:
                 raise NotImplementedError
-
+            print("start_ik_group len: ", len(start_ik_group))
+            print("goal_ik_group len: ", len(goal_ik_group))
             print("metric: ", args.metric)
             if args.metric == "min_q":
                 minimum_q = np.inf
@@ -834,95 +945,8 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 start_q = start_ik_group[np.random.randint(0, len(start_ik_group))]
                 goal_q = goal_ik_group[np.random.randint(0, len(goal_ik_group))]
             
-        else:
-            start_q = given_start_q
-            goal_q = given_goal_q
-        ####################
-        # joint_dists = []
-        # latent_dists = []
-        # highlight_point = None
 
-        # for i in range(len(start_ik_group)):
-        #     for j in range(len(goal_ik_group)):
-        #         q_dist = np.linalg.norm(start_ik_group[i] - goal_ik_group[j])
-        #         z_dist = np.linalg.norm(z_start_ik[i] - z_goal_ik[j])
-                
-        #         joint_dists.append(q_dist)
-        #         latent_dists.append(z_dist)
-
-        #         # 현재 쌍이 start_q, goal_q이면 강조할 포인트로 저장
-        #         if np.allclose(start_ik_group[i], start_q) and np.allclose(goal_ik_group[j], goal_q):
-        #             highlight_point = (q_dist, z_dist)
-
-
-        # # Plot joint space pairwise scatter and diagonal histograms for start_ik_group
-        # start_ik_group = np.array(start_ik_group)
-        # n_joints = start_ik_group.shape[1]
-
-        # fig, axes = plt.subplots(n_joints, n_joints, figsize=(2 * n_joints, 2 * n_joints))
-        # fig.suptitle('Start IK Group: Joint Pairwise Scatter & Diagonal Histograms', fontsize=14)
-
-        # for i in range(n_joints):
-        #     for j in range(n_joints):
-        #         ax = axes[i, j]
-        #         if i == j:
-        #             ax.hist(start_ik_group[:, i], bins=20, color='skyblue', alpha=0.7)
-        #         else:
-        #             ax.scatter(start_ik_group[:, j], start_ik_group[:, i], alpha=0.3, s=5)
-        #         if i < n_joints - 1:
-        #             ax.set_xticklabels([])
-        #         else:
-        #             ax.set_xlabel(f'Joint {j}', fontsize=8)
-        #         if j > 0:
-        #             ax.set_yticklabels([])
-        #         else:
-        #             ax.set_ylabel(f'Joint {i}', fontsize=8)
-        #         ax.tick_params(axis='both', which='major', labelsize=6)
-        # plt.tight_layout(rect=[0, 0, 1, 0.96])
-        # plt.show()
-
-        # # Plot latent space pairwise scatter and diagonal histograms for z_start_ik
-        # print("c")
-        # n_latent = z_start_ik.shape[1]
-        # print("n_latent: ", n_latent)
-        # print("b")  
-        # fig, axes = plt.subplots(n_latent, n_latent, figsize=(2 * n_latent, 2 * n_latent))
-        # fig.suptitle('z_start_ik: Latent Pairwise Scatter & Diagonal Histograms', fontsize=14)
-        # print("a")
-        # for i in range(n_latent):
-        #     for j in range(n_latent):
-        #         ax = axes[i, j]
-        #         if i == j:
-        #             ax.hist(z_start_ik[:, i], bins=20, color='lightcoral', alpha=0.7)
-        #         else:
-        #             ax.scatter(z_start_ik[:, j], z_start_ik[:, i], alpha=0.3, s=5)
-        #         if i < n_latent - 1:
-        #             ax.set_xticklabels([])
-        #         else:
-        #             ax.set_xlabel(f'Latent {j}', fontsize=8)
-        #         if j > 0:
-        #             ax.set_yticklabels([])
-        #         else:
-        #             ax.set_ylabel(f'Latent {i}', fontsize=8)
-        #         ax.tick_params(axis='both', which='major', labelsize=6)
-        # plt.tight_layout(rect=[0, 0, 1, 0.96])
-        # plt.show()
-        
-        # # Plot
-        # plt.figure(figsize=(8, 6))
-        # plt.scatter(joint_dists, latent_dists, alpha=0.5, label='All IK pairs')
-        # if highlight_point:
-        #     plt.scatter(*highlight_point, color='red', s=100, edgecolors='black', label='Chosen pair (start_q, goal_q)')
-
-        # plt.xlabel('Joint Space Distance ||q_start - q_goal||')
-        # plt.ylabel('Latent Space Distance ||z_start - z_goal||')
-        # plt.title('Joint vs Latent Distance between IK Pairs')
-        # plt.grid(True)
-        # plt.legend()
-        # plt.show()
-
-        # continue
-        ####################
+       
         latent_jump = False
         if 'latent_jump' in method:
             latent_jump = True
@@ -1042,7 +1066,6 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
                 planner.max_distance = model_info['planning']['max_distance_q']
                 r, q_path = planner.solve(max_time=max_time)
             
-
             else:
                 raise NotImplementedError
 
@@ -1095,7 +1118,6 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
         if path is None:
             test_paths_cartesian.append(None)
             continue
-        
         path_cartesian = []
         for q in path:
             cur_idx = 0
@@ -1145,96 +1167,3 @@ def benchmark(args, exp_name, model_info, method, update_scene_from_yaml,
         ret['test_path_refs'] = test_path_refs
 
     return ret
-
-def benchmark_ik_selection_all_pairs(
-    model_info,
-    constraint_model,
-    validity_model,
-    constraint,
-    test_scenes,
-    model_path,
-    method="latent_rrt",
-    use_given_start_goal=False,
-    max_time=30.0,
-    debug=False,
-):
-    """
-    For each test scene, run the planner for all possible combinations of start and goal IK pairs.
-    Returns a dict with per-scene results for all (start_q, goal_q) pairs.
-    """
-    import numpy as np
-    import torch
-    from ljcmp.utils import network
-
-    results = {}
-    for scene_idx, scene in enumerate(test_scenes):
-        scene_result = {}
-        # Extract poses and/or given qs
-        start_pose = scene.get("start_pose")
-        goal_pose = scene.get("goal_pose")
-        given_start_q = scene.get("given_start_q", None)
-        given_goal_q = scene.get("given_goal_q", None)
-
-        # Generate all IK solutions for start and goal
-        trac_ik_left = constraint.trac_ik_left
-        trac_ik_right = constraint.trac_ik_right
-        constraint_lb = constraint.lb
-        constraint_ub = constraint.ub
-
-        # Helper to get IK group for a pose
-        def get_ik_group(pose, trac_ik_left, trac_ik_right, constraint, n_samples=100):
-            ik_group = []
-            for _ in range(n_samples):
-                joint_seed = np.random.uniform(constraint.lb[:6], constraint.ub[:6])
-                success_left, ik_left = trac_ik_left.solve(np.array(pose[0]), np.array(pose[1]), joint_seed)
-                if not success_left:
-                    continue
-                if np.any(ik_left < constraint.lb[6:]) or np.any(ik_left > constraint.ub[6:]):
-                    continue
-                success_right, ik_right = trac_ik_right.solve(np.array(pose[0]), np.array(pose[1]), joint_seed)
-                if not success_right:
-                    continue
-                if np.any(ik_right < constraint.lb[:6]) or np.any(ik_right > constraint.ub[:6]):
-                    continue
-                full_ik = np.concatenate((ik_right, ik_left))
-                if constraint.planning_scene.is_valid(full_ik):
-                    ik_group.append(full_ik)
-            return ik_group
-
-        if not use_given_start_goal:
-            start_ik_group = get_ik_group(start_pose, trac_ik_left, trac_ik_right, constraint)
-            goal_ik_group = get_ik_group(goal_pose, trac_ik_left, trac_ik_right, constraint)
-        else:
-            # If using given qs, just use those as the only "group"
-            start_ik_group = [given_start_q]
-            goal_ik_group = [given_goal_q]
-
-        # For all combinations of start and goal IKs, run the planner
-        pair_results = {}
-        for i, start_q in enumerate(start_ik_group):
-            for j, goal_q in enumerate(goal_ik_group):
-                ret = benchmark(
-                    model_info=model_info,
-                    constraint_model=constraint_model,
-                    validity_model=validity_model,
-                    constraint=constraint,
-                    exp_name=model_info.get("exp_name", "exp"),
-                    model_path=model_path,
-                    method=method,
-                    use_given_start_goal=True,  # always use the explicit pair
-                    max_time=max_time,
-                    test_scene_start_idx=scene_idx,
-                    num_test_scenes=1,
-                    debug=debug,
-                    metric="given",  # not using metric, explicit pair
-                    start_pose=start_pose,
-                    goal_pose=goal_pose,
-                    given_start_q=start_q,
-                    given_goal_q=goal_q,
-                )
-                pair_results[(i, j)] = ret
-        scene_result["ik_pair_results"] = pair_results
-        scene_result["start_ik_group"] = start_ik_group
-        scene_result["goal_ik_group"] = goal_ik_group
-        results[scene_idx] = scene_result
-    return results

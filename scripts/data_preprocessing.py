@@ -48,27 +48,27 @@ if __name__ == "__main__":
                 null_data.append(np.array(data['nulls'][i][j]))
                 jacobian_data.append(np.array(data['jacobians'][i][j]))
             
-        import pdb; pdb.set_trace()
-    
-    
     else:
         raise ValueError(f"Invalid data_type: {args.data_type}")
 
-    joint_data = np.array(data)
+    joint_data = np.array(joint_data)
+    null_data = np.array(null_data)
+    jacobian_data = np.array(jacobian_data)
+    import pdb; pdb.set_trace()
     print(f"Joint data: {joint_data.shape}")
-    
+
     # UMAP parameter sets to try
     umap_params = [
         {"n_neighbors": 3, "min_dist": 0.1},
-        {"n_neighbors": 3, "min_dist": 0.2},
-        {"n_neighbors": 3, "min_dist": 0.3},
-        {"n_neighbors": 3, "min_dist": 0.4},
-        {"n_neighbors": 3, "min_dist": 0.5},
         {"n_neighbors": 4, "min_dist": 0.1},
-        {"n_neighbors": 4, "min_dist": 0.5},
         {"n_neighbors": 5, "min_dist": 0.1},
-        {"n_neighbors": 5, "min_dist": 0.5},
+        {"n_neighbors": 6, "min_dist": 0.1},
+        {"n_neighbors": 7, "min_dist": 0.1},
+        {"n_neighbors": 8, "min_dist": 0.1},
+        {"n_neighbors": 9, "min_dist": 0.1},
         {"n_neighbors": 10, "min_dist": 0.1},
+        {"n_neighbors": 15, "min_dist": 0.1},
+        {"n_neighbors": 20, "min_dist": 0.1},
     ]
 
     multi_label = np.zeros((joint_data.shape[0], len(umap_params)))
@@ -144,7 +144,10 @@ if __name__ == "__main__":
 
     print(multi_label.shape)
     np.save(
-        f'dataset/{args.exp_name}/manifold/umap_hdbscan_concat_all.npy',
+        f'dataset/{args.exp_name}/manifold/pseudo_labels.npy',
         multi_label,
         allow_pickle=True
     )
+    np.save(f'dataset/{args.exp_name}/manifold/joint_data.npy', joint_data, allow_pickle=True)
+    np.save(f'dataset/{args.exp_name}/manifold/null_data.npy', null_data, allow_pickle=True)
+    np.save(f'dataset/{args.exp_name}/manifold/jacobian_data.npy', jacobian_data, allow_pickle=True)

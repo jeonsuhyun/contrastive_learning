@@ -12,14 +12,14 @@ from ljcmp.utils.model_utils import benchmark
 from ljcmp.utils.generate_environment import generate_environment
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--exp_name', '-E', type=str, default='ur5_dual', help='panda_orientation, panda_dual, panda_dual_orientation, panda_triple')
+parser.add_argument('--exp_name', '-E', type=str, default='tocabi', help='panda_orientation, panda_dual, panda_dual_orientation, panda_triple')
 parser.add_argument('--seed', type=int, default=1107)
 parser.add_argument('--use_given_start_goal', type=bool, default=True)
 parser.add_argument('--debug', type=bool, default=False)
 parser.add_argument('--display', type=bool, default=False)
 parser.add_argument('--device', type=str, default='cuda')
 parser.add_argument('--method', '-M', type=str, default='constrained_rrt', help='latent_rrt, latent_rrt_latent_jump, sampling_rrt, precomputed_roadmap_prm, precomputed_graph_rrt, project_rrt')
-parser.add_argument('--test_scene_start_idx', type=int, default=500)
+parser.add_argument('--test_scene_start_idx', type=int, default=0)
 parser.add_argument('--metric', type=str, default='min_q', help='min_q, min_z')
 parser.add_argument('--num_samples', type=int, default=1000)
 parser.add_argument('--num_test_scenes', type=int, default=100)

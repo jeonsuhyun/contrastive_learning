@@ -14,17 +14,32 @@ def train_epoch(model_transformer, data_loader, optimizer, device, epoch):
     model_transformer.train()
     running_loss = 0.0
 
-    for step, (x_i, x_null, label, c) in enumerate(data_loader):
+    for step, (x_i, x_null, label, jac) in enumerate(data_loader):
         x_i    = x_i.to(device)
         x_null = x_null.to(device)
         label  = label.flip(dims=[1]).to(device)
-        c      = c.to(device)
+        jac    = jac.to(device)
 
         batch_size = x_i.size(0)
-        epsilon = torch.randn((batch_size, x_null.shape[-1], 1), device=device) * 0.1
-        x_j = x_i + torch.reshape(x_null @ epsilon, (batch_size, -1))
-        optimizer.zero_grad()
+        # null space perturbation
+        # epsilon = torch.randn((batch_size, x_null.shape[-1], 1), device=device) * 0.1
+        # x_j = x_i + torch.reshape(x_null @ epsilon, (batch_size, -1))
         
+        # jacobian perturbation
+        # jac: (batch_size, 6, joint_dim)
+        # jac_pinv: (batch_size, joint_dim, 6)
+        # x_i: (batch_size, joint_dim)
+        # We want to generate a null space perturbation: (I - J.T @ J.T^+) v, v ~ N(0, I)
+        # So, (I - J.T @ J.T^+) is (batch_size, joint_dim, joint_dim)
+        # v: (batch_size, joint_dim, 1)
+        epsilon_jac = torch.randn((batch_size, jac.shape[2], 1), device=device) * 0.1  # (batch, joint_dim, 1)
+        jac_pinv = torch.linalg.pinv(jac.transpose(1,2))  # (batch, 6, joint_dim)
+        identity = torch.eye(jac.shape[2], device=device).unsqueeze(0).expand(batch_size, -1, -1)  # (batch, joint_dim, joint_dim)
+        proj = jac.transpose(1,2) @ jac_pinv  # (batch, joint_dim, joint_dim)
+        null_proj = identity - proj  # (batch, joint_dim, joint_dim)
+        x_j = x_i + torch.bmm(null_proj.float(), epsilon_jac.float()).squeeze(-1)  # (batch, joint_dim)
+        optimizer.zero_grad()
+
         ## hmce loss
         z_i, z_j = model_transformer(x_i,x_j)
         z_concat = torch.cat((z_i, z_j), dim=0)
@@ -65,7 +80,7 @@ def save_checkpoint(model, optimizer, epoch, args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_yaml", type=str, default="ur5_dual_fixed", required=True,
+    parser.add_argument("--config_yaml", type=str, default="tocabi", required=True,
                         help="Name of the experiment. Used to load the corresponding config YAML file.")
 
     # 먼저 experiment 이름만 받아서 config 경로 설정
@@ -144,18 +159,20 @@ if __name__ == "__main__":
 
     elif "tocabi" in args.dataset:
         print("Loading Tocabi dataset...")
-        cond_joint = np.load(f'./dataset/{args.exp_name}/manifold/data_fixed_50000.npy')
-        nulls     = np.load(f'./dataset/{args.exp_name}/manifold/null_fixed_50000.npy')
-        label     = np.load(f'./dataset/{args.exp_name}/manifold/label_fixed_50000.npy')
-        cond      = cond_joint[:, :args.c_dim].astype(np.float32)
-        joint     = cond_joint[:, args.c_dim:].astype(np.float32)
+        joint = np.load(f'./dataset/{args.exp_name}/manifold/joint_data.npy')
+        nulls     = np.load(f'./dataset/{args.exp_name}/manifold/null_data.npy')
+        label     = np.load(f'./dataset/{args.exp_name}/manifold/pseudo_labels.npy')
+        jacobian  = np.load(f'./dataset/{args.exp_name}/manifold/jacobian_data.npy')
+        
+        joint     = joint.astype(np.float32)
         nulls     = nulls.astype(np.float32)
         label     = label.astype(np.float32)
         dataset   = data.TensorDataset(
             torch.from_numpy(joint),
             torch.from_numpy(nulls),
             torch.from_numpy(label),
-            torch.from_numpy(cond)
+            torch.from_numpy(jacobian),
+
         )
 
     else:

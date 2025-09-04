@@ -6,7 +6,7 @@ workers: 8
 batch_size: 1024 # 256
 start_epoch: 0
 epochs: 10000
-dataset: "tocabi_fixed"
+dataset: "tocabi"
 
 # model options
 resnet: "Linear" #ResNet1D / ResNet18 / ResNet34 / ResNet50
@@ -14,7 +14,7 @@ input_dim: 16
 feature_dim: 64
 cluster_dim: 6
 instance_dim: 10
-model_path: "contrastiveik/save/tocabi_fixed"
+model_path: "contrastiveik/save/tocabi"
 reload: False
 
 # loss options
@@ -25,7 +25,7 @@ cluster_temperature: 1.0
 
 # dataset: panda_orientation
 exp_name: "tocabi"
-dataset_name: "fixed_50000"
+dataset_name: "tocabi"
 # x_dim: 14
 # z_dim: 5
 c_dim: 3

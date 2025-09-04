@@ -77,7 +77,6 @@ def compute_tocabi_grasp_poses(obj_pos, obj_quat, condition=None):
     # frame rotation
     frame_rot = R.from_euler('z', np.pi).as_matrix()
     obj_to_ee_pos_l = np.array([0.0, l_obj_y, l_obj_z])
-    obj_to_ee_pos_l =  obj_to_ee_pos_l
     obj_dt_r = -(np.pi/2 - theta)
     obj_to_ee_rot_l = np.array([
         [1, 0, 0],

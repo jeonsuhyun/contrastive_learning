@@ -24,17 +24,17 @@ def generate_environment(exp_name):
     if 'panda_orientation' in exp_name:
         return generate_environment_panda_orientation(exp_name)
 
-    if 'panda_dual' in exp_name:
+    elif 'panda_dual' in exp_name:
         return generate_environment_panda_dual(exp_name)
     
-    if 'panda_triple' in exp_name:
+    elif 'panda_triple' in exp_name:
         print(exp_name)
         return generate_environment_panda_triple(exp_name)
 
-    if 'ur5_dual' in exp_name:
+    elif 'ur5_dual' in exp_name:
         return generate_environment_ur5_dual(exp_name)
     
-    if 'tocabi' in exp_name:
+    elif 'tocabi' in exp_name:
         return generate_environment_tocabi(exp_name)
 
     else:
@@ -388,18 +388,74 @@ def generate_environment_tocabi(exp_name):
         constraint.set_grasp_to_object_pose(go_pos=ee_to_obj_pos, go_quat=ee_to_obj_quat)
         return q
 
+    def set_constraint_(c):
+        d1, d2, theta = c
+        l = d1 + 2 * d2 * cos(theta)
+        ly = l * sin(theta)
+        lz = l * cos(theta)
 
+        # frame rotation (compute_tocabi_grasp_poses와 동일하게)
+        frame_rot = R.from_euler('z', np.pi).as_matrix()
+
+        # chain pose (left ee > right ee)
+        dt = pi - 2 * theta
+        chain_pos = np.array([0.0, ly, lz])
+        chain_rot = np.array([
+            [1, 0, 0],
+            [0, cos(dt), -sin(dt)],
+            [0, sin(dt), cos(dt)]
+        ])
+        chain_rot = chain_rot @ frame_rot
+        chain_quat = R.from_matrix(chain_rot).as_quat()
+
+        t1 = np.concatenate([chain_pos, chain_quat])
+        constraint.set_chains([t1])
+        pc.detach_object('tray', 'L_Wrist2_Link')
+        constraint.set_early_stopping(True)
+        constraint.set_tolerance(1e-4)
+
+        # obj > left ee 변환
+        l_obj_z = d2 * np.sin(theta)
+        l_obj_y = d1/2 + d2 * np.cos(theta)
+        obj_to_ee_pos = np.array([0.0, l_obj_y, l_obj_z])
+        obj_to_ee_pos = obj_to_ee_pos @ frame_rot
+
+        obj_dt = -(pi/2 + theta)
+        obj_to_ee_rot = np.array([
+            [1, 0, 0],
+            [0, cos(obj_dt), -sin(obj_dt)],
+            [0, sin(obj_dt),  cos(obj_dt)]
+        ])
+        obj_to_ee_rot = obj_to_ee_rot @ frame_rot
+        obj_to_ee_quat = R.from_matrix(obj_to_ee_rot).as_quat()
+
+        # world 좌표계로 변환
+        q = np.zeros(16)
+        pos, quat = constraint.forward_kinematics('L_arm', q[:8])
+        T_0g = get_transform(pos, quat)  # world > ee
+        T_og = get_transform(obj_to_ee_pos, obj_to_ee_quat)  # obj > ee
+        T_0o = T_0g @ np.linalg.inv(T_og)  # world > obj
+        obj_pos, obj_quat = get_pose(T_0o)
+
+        # object 등록
+        # pc.add_box('tray', [d1 * 3/4, d1, 0.01], obj_pos, obj_quat)
+        # pc.update_joints(q)
+        # pc.attach_object('tray', 'L_Wrist2_Link', [])
+        # constraint.set_grasp_to_object_pose(go_pos=obj_to_ee_pos, go_quat=obj_to_ee_quat)
+        return q
+    
     c = np.array([0.3, 0.05, 0.9],dtype=np.float32)
 
-    q_init = set_constraint(c)
+    # q_init = set_constraint(c)
+    q_init = set_constraint_(c)
 
-    add_table(pc, 'table_1', [0.6,-0.6,-0.5], 0, 0, 0.5, 0.9, 1.0, 0.05)
-    add_table(pc, 'table_2', [0.6,0.6,-0.5], 0, 0, 0.5, 0.9, 1.0, 0.05)
+    add_table(pc, 'table_1', [0.6,-0.5,-0.5], 0, 0, 0.5, 0.8, 1.0, 0.05)
+    add_table(pc, 'table_2', [0.6,0.5,-0.5], 0, 0, 0.5, 0.8, 1.0, 0.05)
 
-    num_obs = 3
+    num_obs = 0
 
     def update_scene_from_yaml(scene_data):
         for i in range(num_obs):
             pc.add_box('obs{}'.format(i), scene_data['obs{}'.format(i)]['dim'], scene_data['obs{}'.format(i)]['pos'], [1,0,0,0])
 
-    return constraint, model_info, c, update_scene_from_yaml, set_constraint, q_init
+    return constraint, model_info, c, update_scene_from_yaml, set_constraint_, q_init

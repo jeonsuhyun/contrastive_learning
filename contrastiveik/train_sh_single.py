@@ -138,9 +138,9 @@ if __name__ == "__main__":
 
     elif "tocabi" in args.dataset:
         print("Loading Tocabi dataset...")
-        cond_joint = np.load(f'./dataset/{args.exp_name}/manifold/data_fixed_50000.npy')
-        nulls     = np.load(f'./dataset/{args.exp_name}/manifold/null_fixed_50000.npy')
-        label     = np.load(f'./dataset/{args.exp_name}/manifold/label_fixed_50000.npy')
+        cond_joint = np.load(f'./dataset/{args.exp_name}/manifold/joint_data.npy')
+        nulls     = np.load(f'./dataset/{args.exp_name}/manifold/null_data.npy')
+        label     = np.load(f'./dataset/{args.exp_name}/manifold/pseudo_labels.npy')
         cond      = cond_joint[:, :args.c_dim].astype(np.float32)
         joint     = cond_joint[:, args.c_dim:].astype(np.float32)
         nulls     = nulls.astype(np.float32)

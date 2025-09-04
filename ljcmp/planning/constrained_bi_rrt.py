@@ -228,14 +228,16 @@ class ConstrainedBiRRT:
             
             # sample
             q_rand = self.random_sample()
-
+            
             r = self.constraint.project(q_rand)
+            # print(r)
             if r is False:
                 continue
-
+            
+            # print("grow start")
             r, q_des, q_idx_cur = self.grow(cur_tree, q_rand)
-
             if r != GrowStatus.TRAPPED:
+                # print("grow success")
                 q_added = copy.deepcopy(q_des)
 
                 if r != GrowStatus.REACHED:
@@ -294,11 +296,12 @@ class ConstrainedBiRRT:
         
         return self.enforce_bounds(q)
     
-    def random_sample(self):
-        q = np.random.uniform(self.lb, self.ub)
-        r = self.constraint.project(q)
-        if r is False:
-            return np.random.uniform(self.lb, self.ub)
+    def random_sample(self, max_trials=100):
+        for _ in range(max_trials):
+            q = np.random.uniform(self.lb, self.ub)
+            r = self.constraint.project(q)
+            if r is not False:
+                return self.enforce_bounds(q)
         return self.enforce_bounds(q)
 
     def grow(self, tree, q):

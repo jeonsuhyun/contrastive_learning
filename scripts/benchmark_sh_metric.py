@@ -8,7 +8,7 @@ import tqdm
 import time
 import matplotlib.pyplot as plt
 from termcolor import colored
-from ljcmp.utils.model_utils import benchmark, benchmark_ik_selection_all_pairs
+from ljcmp.utils.model_utils import benchmark
 from ljcmp.utils.generate_environment import generate_environment
 from scipy.spatial.transform import Rotation as R
 from srmt.kinematics.trac_ik import TRACIK
@@ -185,12 +185,20 @@ def load_scene_and_set_start_goal(i, args, scene_dir, constraint):
                 instance_dim=8
                 cluster_dim=8
             else:
-                model_path = os.path.join('contrastiveik','save',"tocabi_fixed_transformer", "checkpoint_10000.tar")
+                model_path = os.path.join('contrastiveik','save',"tocabi", "checkpoint_500.tar")
                 input_dim=16
                 feature_dim=64
-                instance_dim=6
-                cluster_dim=10
-
+                instance_dim=10
+                cluster_dim=6
+        nn_model = network.TransformerNetwork(input_dim=input_dim, feature_dim=feature_dim, 
+                               instance_dim=instance_dim, cluster_dim=cluster_dim)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # print(model)
+        nn_model.load_state_dict(torch.load(model_path, map_location=device.type)['net'])
+        nn_model.to(device)
+        nn_model.eval()
+    else:
+        nn_model = None
     # set IK solver
     trac_ik_left = TRACIK(base_link=model_info['base_link'], tip_link=model_info['ee_links'][0], max_time=0.1)
     trac_ik_right = TRACIK(base_link=model_info['base_link'], tip_link=model_info['ee_links'][1], max_time=0.1)
@@ -263,16 +271,21 @@ def load_scene_and_set_start_goal(i, args, scene_dir, constraint):
             if constraint.planning_scene.is_valid(goal_full_ik):
                 goal_ik_group.append(goal_full_ik)
 
-    return start_ik_group, goal_ik_group, obj_start_pose, obj_goal_pose, scene_dir_local, condition
+    return start_ik_group, goal_ik_group, obj_start_pose, obj_goal_pose, scene_dir_local, condition, nn_model
 
-def select_start_goal_q(start_ik_group, goal_ik_group, metric):
+def select_start_goal_q(start_ik_group, goal_ik_group, metric, nn_model):
     if metric == 'min_z':
+        with torch.no_grad():
+            # z_start_ik = nn_model.feature_inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+            # z_goal_ik = nn_model.feature_inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+            z_start_ik = nn_model.inference(torch.tensor(np.array(start_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
+            z_goal_ik = nn_model.inference(torch.tensor(np.array(goal_ik_group), dtype=torch.float32).to(device)).cpu().numpy()
         min_z = np.inf
         min_start_q = None
         min_goal_q = None
         for i in range(len(start_ik_group)):
             for j in range(len(goal_ik_group)):
-                z_dist = np.linalg.norm(start_ik_group[i] - goal_ik_group[j])
+                z_dist = np.linalg.norm(z_start_ik[i] - z_goal_ik[j])
                 if z_dist < min_z:
                     min_z = z_dist
                     min_start_q = start_ik_group[i]
@@ -413,8 +426,8 @@ if __name__ == '__main__':
         constraint.set_max_iterations(1000)
         constraint.planning_scene.display(np.zeros(16))
         scene_dir = f'dataset/{args.exp_name}/scene_data'
-        start_ik_group, goal_ik_group, obj_start_pose, obj_goal_pose, scene_dir_local, condition = load_scene_and_set_start_goal(i, args, scene_dir, constraint)
-        start_q, goal_q = select_start_goal_q(start_ik_group, goal_ik_group, args.metric)
+        start_ik_group, goal_ik_group, obj_start_pose, obj_goal_pose, scene_dir_local, condition, nn_model = load_scene_and_set_start_goal(i, args, scene_dir, constraint)
+        start_q, goal_q = select_start_goal_q(start_ik_group, goal_ik_group, args.metric, nn_model)
 
         if start_q is None or goal_q is None:
             continue
